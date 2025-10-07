@@ -87,3 +87,7 @@ $RECYCLE.BIN/
 Test*.te*
 *.test.exe
 *.test
+
+/config
+/tokens.db
+/openvpn-server*.conf

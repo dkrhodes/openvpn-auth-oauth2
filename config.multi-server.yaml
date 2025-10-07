@@ -1,0 +1,62 @@
+# Multi-Server Configuration for Docker Compose Testing
+# This configuration demonstrates how to use openvpn-auth-oauth2 with multiple OpenVPN servers
+
+oauth2:
+  issuer: http://keycloak:8080/realms/openvpn-auth-oauth2
+  client:
+    id: openvpn-auth-oauth2
+    secret: zSkHo6iq8AEZ9W725JqomqkZGhfOG8jL
+  provider: generic
+  validate:
+    issuer: false
+  refresh:
+    enabled: true
+    secret: "1jd93h5b6s82lf03jh5b2hf9"
+    expires: 24h
+
+# Token storage configuration - using SQLite for persistence
+token-storage:
+  type: sqlite
+  sqlite-path: /var/lib/openvpn-auth-oauth2/tokens.db
+  cleanup-interval: 1h
+
+# Multiple OpenVPN servers configuration
+openvpn:
+  servers:
+    - name: "server1"
+      addr: "tcp://openvpn-server1:8081"
+      password: "password1"
+      enabled: true
+    - name: "server2"
+      addr: "tcp://openvpn-server2:8082"
+      password: "password2"
+      enabled: true
+  # Global settings that apply to all servers
+  auth-token-user: true
+  auth-pending-timeout: 3m
+  command-timeout: 10s
+  reauthentication: true
+  client-config:
+    enabled: false
+  bypass:
+    common-names: []
+  common-name:
+    environment-variable-name: "common_name"
+    mode: "plain"
+  pass-through:
+    enabled: false
+
+http:
+  listen: ":9000"
+  baseurl: "http://localhost:9000"
+  secret: "1jd93h5b6s82lf03jh5b2hf9"
+  tls: false
+
+log:
+  format: console
+  level: info
+  vpn-client-ip: true
+
+debug:
+  listen: ":9001"
+  pprof: false

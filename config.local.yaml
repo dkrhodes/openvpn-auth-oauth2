@@ -1,0 +1,63 @@
+# Local Configuration for OpenVPN Auth OAuth2 Plugin
+# This configuration is for running the plugin locally while OpenVPN servers run in Docker
+
+oauth2:
+  issuer: http://localhost:8080/realms/openvpn-auth-oauth2
+  client:
+    id: openvpn-auth-oauth2
+    secret: zSkHo6iq8AEZ9W725JqomqkZGhfOG8jL
+  provider: generic
+  validate:
+    issuer: false
+  refresh:
+    enabled: true
+    secret: "1jd93h5b6s82lf03jh5b2hf9"
+    expires: 24h
+
+# Token storage configuration - using SQLite for persistence
+token-storage:
+  type: sqlite
+  sqlite-path: ./tokens.db
+  cleanup-interval: 1h
+
+# Multiple OpenVPN servers configuration
+# Management ports are exposed from Docker containers to localhost
+openvpn:
+  servers:
+    - name: "server1"
+      addr: "tcp://localhost:8081"
+      password: "password1"
+      enabled: true
+    - name: "server2"
+      addr: "tcp://localhost:8082"
+      password: "password2"
+      enabled: true
+  # Global settings that apply to all servers
+  auth-token-user: true
+  auth-pending-timeout: 3m
+  command-timeout: 10s
+  reauthentication: true
+  client-config:
+    enabled: false
+  bypass:
+    common-names: []
+  common-name:
+    environment-variable-name: "common_name"
+    mode: "plain"
+  pass-through:
+    enabled: false
+
+http:
+  listen: ":9000"
+  baseurl: "http://localhost:9000"
+  secret: "1jd93h5b6s82lf03jh5b2hf9"
+  tls: false
+
+log:
+  format: console
+  level: info
+  vpn-client-ip: true
+
+debug:
+  listen: ":9001"
+  pprof: false
