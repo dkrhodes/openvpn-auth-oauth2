@@ -117,32 +117,32 @@ func (m *Manager) GetAllClients() map[string]*Client {
 
 // ConnectAll connects to all managed OpenVPN servers
 func (m *Manager) ConnectAll(ctx context.Context) error {
-    m.clientsMu.RLock()
-    clients := make(map[string]*Client)
-    for name, client := range m.clients {
-        clients[name] = client
-    }
-    m.clientsMu.RUnlock()
+	m.clientsMu.RLock()
+	clients := make(map[string]*Client)
+	for name, client := range m.clients {
+		clients[name] = client
+	}
+	m.clientsMu.RUnlock()
 
-    if len(clients) == 0 {
-        return fmt.Errorf("no OpenVPN servers configured")
-    }
+	if len(clients) == 0 {
+		return fmt.Errorf("no OpenVPN servers configured")
+	}
 
-    var wg sync.WaitGroup
+	var wg sync.WaitGroup
 
-    for name, client := range clients {
-        wg.Add(1)
-        go func(name string, client *Client) {
-            defer wg.Done()
+	for name, client := range clients {
+		wg.Add(1)
+		go func(name string, client *Client) {
+			defer wg.Done()
 
-            m.connectLoop(ctx, name, client)
-        }(name, client)
-    }
+			m.connectLoop(ctx, name, client)
+		}(name, client)
+	}
 
-    <-ctx.Done()
-    wg.Wait()
+	<-ctx.Done()
+	wg.Wait()
 
-    return nil
+	return nil
 }
 
 // ShutdownAll gracefully shuts down all managed OpenVPN clients
@@ -187,73 +187,74 @@ func (m *Manager) GetServerStatus() map[string]ServerStatus {
 // connectLoop maintains a persistent connection to a single OpenVPN server.
 // It retries with exponential backoff between 1s and 16s on disconnect/errors.
 func (m *Manager) connectLoop(ctx context.Context, serverName string, client *Client) {
-    const (
-        minBackoffSeconds = 1
-        maxBackoffSeconds = 16
-    )
+	const (
+		minBackoffSeconds = 1
+		maxBackoffSeconds = 16
+	)
 
     backoff := minBackoffSeconds
 
-    for {
-        if ctx.Err() != nil {
-            return
-        }
+	for {
+		if ctx.Err() != nil {
+			return
+		}
 
-        m.logger.LogAttrs(ctx, slog.LevelInfo,
-            "connecting to OpenVPN server",
-            slog.String("server", serverName),
-        )
+		m.logger.LogAttrs(ctx, slog.LevelInfo,
+			"connecting to OpenVPN server",
+			slog.String("server", serverName),
+		)
 
         // Block until connection terminates or context is cancelled
-        if err := client.Connect(ctx); err != nil {
-            // Log and retry with backoff
-            m.logger.LogAttrs(ctx, slog.LevelWarn,
-                fmt.Errorf("openvpn connection error: %w", err).Error(),
+        startAt := time.Now()
+        err := client.Connect(ctx)
+        connectDuration := time.Since(startAt)
+        if err != nil {
+			// Log and retry with backoff
+			m.logger.LogAttrs(ctx, slog.LevelWarn,
+				fmt.Errorf("openvpn connection error: %w", err).Error(),
+				slog.String("server", serverName),
+                slog.String("uptime", connectDuration.String()),
+			)
+		} else {
+			// If Connect returned without error, the connection ended gracefully
+			m.logger.LogAttrs(ctx, slog.LevelInfo,
+				"openvpn connection terminated",
                 slog.String("server", serverName),
-            )
-        } else {
-            // If Connect returned without error, the connection ended gracefully
-            m.logger.LogAttrs(ctx, slog.LevelInfo,
-                "openvpn connection terminated",
-                slog.String("server", serverName),
-            )
-        }
+                slog.String("uptime", connectDuration.String()),
+			)
+		}
 
-        if ctx.Err() != nil {
-            return
+		if ctx.Err() != nil {
+			return
+		}
+
+        // Reset backoff if the previous connection was stable for >= 1 minute
+        if connectDuration >= time.Minute {
+            backoff = minBackoffSeconds
         }
 
         // Sleep with backoff, cancelable by context
         d := time.Duration(backoff) * time.Second
-        m.logger.LogAttrs(ctx, slog.LevelInfo,
-            "retrying openvpn connection with backoff",
-            slog.String("server", serverName),
-            slog.String("backoff", d.String()),
-        )
+		m.logger.LogAttrs(ctx, slog.LevelInfo,
+			"retrying openvpn connection with backoff",
+			slog.String("server", serverName),
+			slog.String("backoff", d.String()),
+		)
 
-        select {
-        case <-ctx.Done():
-            return
-        case <-time.After(d):
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(d):
+		}
+
+        // Exponential backoff up to max (only if not reset above)
+        if backoff < maxBackoffSeconds {
+            backoff *= 2
+            if backoff > maxBackoffSeconds {
+                backoff = maxBackoffSeconds
+            }
         }
-
-        // Exponential backoff up to max
-        backoff *= 2
-        if backoff > maxBackoffSeconds {
-            backoff = maxBackoffSeconds
-        }
-
-        // After each attempt, reset backoff to minimum to recover quickly on next success
-        // We only want increasing delay between consecutive failures. Since Connect blocks
-        // for the session lifetime, reaching here indicates a failure/termination; keep
-        // exponential. If next connect is successful and lasts longer, the loop will only
-        // resume on termination and backoff will reapply then. To be conservative, reset
-        // when connection established more than zero time is not trivially detectable here.
-        // We'll keep exponential growth across immediate failures and reset after a short
-        // connect by setting backoff to min on next iteration if we managed to pass the
-        // first sleep. To ensure eventual retry speed after any success, reset here:
-        backoff = minBackoffSeconds
-    }
+	}
 }
 
 // AcceptClient routes the client acceptance to the correct OpenVPN server
