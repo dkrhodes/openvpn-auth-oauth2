@@ -192,7 +192,7 @@ func (m *Manager) connectLoop(ctx context.Context, serverName string, client *Cl
 		maxBackoffSeconds = 16
 	)
 
-    backoff := minBackoffSeconds
+	backoff := minBackoffSeconds
 
 	for {
 		if ctx.Err() != nil {
@@ -204,23 +204,23 @@ func (m *Manager) connectLoop(ctx context.Context, serverName string, client *Cl
 			slog.String("server", serverName),
 		)
 
-        // Block until connection terminates or context is cancelled
-        startAt := time.Now()
-        err := client.Connect(ctx)
-        connectDuration := time.Since(startAt)
-        if err != nil {
+		// Block until connection terminates or context is cancelled
+		startAt := time.Now()
+		err := client.Connect(ctx)
+		connectDuration := time.Since(startAt)
+		if err != nil {
 			// Log and retry with backoff
 			m.logger.LogAttrs(ctx, slog.LevelWarn,
 				fmt.Errorf("openvpn connection error: %w", err).Error(),
 				slog.String("server", serverName),
-                slog.String("uptime", connectDuration.String()),
+				slog.String("uptime", connectDuration.String()),
 			)
 		} else {
 			// If Connect returned without error, the connection ended gracefully
 			m.logger.LogAttrs(ctx, slog.LevelInfo,
 				"openvpn connection terminated",
-                slog.String("server", serverName),
-                slog.String("uptime", connectDuration.String()),
+				slog.String("server", serverName),
+				slog.String("uptime", connectDuration.String()),
 			)
 		}
 
@@ -228,13 +228,13 @@ func (m *Manager) connectLoop(ctx context.Context, serverName string, client *Cl
 			return
 		}
 
-        // Reset backoff if the previous connection was stable for >= 1 minute
-        if connectDuration >= time.Minute {
-            backoff = minBackoffSeconds
-        }
+		// Reset backoff if the previous connection was stable for >= 1 minute
+		if connectDuration >= time.Minute {
+			backoff = minBackoffSeconds
+		}
 
-        // Sleep with backoff, cancelable by context
-        d := time.Duration(backoff) * time.Second
+		// Sleep with backoff, cancelable by context
+		d := time.Duration(backoff) * time.Second
 		m.logger.LogAttrs(ctx, slog.LevelInfo,
 			"retrying openvpn connection with backoff",
 			slog.String("server", serverName),
@@ -247,13 +247,13 @@ func (m *Manager) connectLoop(ctx context.Context, serverName string, client *Cl
 		case <-time.After(d):
 		}
 
-        // Exponential backoff up to max (only if not reset above)
-        if backoff < maxBackoffSeconds {
-            backoff *= 2
-            if backoff > maxBackoffSeconds {
-                backoff = maxBackoffSeconds
-            }
-        }
+		// Exponential backoff up to max (only if not reset above)
+		if backoff < maxBackoffSeconds {
+			backoff *= 2
+			if backoff > maxBackoffSeconds {
+				backoff = maxBackoffSeconds
+			}
+		}
 	}
 }
 
