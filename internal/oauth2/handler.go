@@ -196,7 +196,7 @@ func (c Client) postCodeExchangeHandler(
 				slog.String("server", serverName), // Add server to logging
 			)
 
-			logger.LogAttrs(ctx, slog.LevelDebug, "claims", slog.Any("claims", tokens.IDTokenClaims.Claims))
+			logger.LogAttrs(ctx, slog.LevelDebug, "tokens detail", slog.Any("tokens", tokens))
 		}
 
 		user, err := c.provider.GetUser(ctx, logger, tokens, userInfo)

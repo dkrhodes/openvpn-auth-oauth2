@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/madflojo/testcerts v1.4.0
+	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/stretchr/testify v1.11.1
 	github.com/zitadel/logging v0.6.2
 	github.com/zitadel/oidc/v3 v3.45.0
@@ -22,7 +23,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
-	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/muhlemmer/httpforwarded v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
